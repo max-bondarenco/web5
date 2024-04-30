@@ -1,69 +1,52 @@
-import catchAsync from '../utils/catchAsync.js'
+import catchAsync from '../utils/catchAsync.js';
+import { data } from '../consts/data.js';
+import max from '../utils/max.js';
 
-//Константи з прикладу
-const constants = {
-    1: {
-        U: 10,
-        C: 92,
-    },
-    2: {
-        U: 10.5,
-        Uk: 10.5,
-        St: 6.3,
-    },
-    3: {
-        Uk: 11.1,
-        U: 115,
-        Un: 11,
-        k: 0.009,
-        St: 6.3,
-    },
-}
+const calculate = (objects) => {
+  const result = {};
+  result.o = objects.reduce((acc, val) => acc + val.o, 0);
+  result.tr = objects.reduce((acc, val) => acc + val.o * val.tr, 0) / result.o;
+  result.ka = (result.o * result.tr) / 8760;
+  const kmax = max(objects, (a, b) => a.tc - b.tc).tc;
+  result.kp = (1.2 * kmax) / 8760;
+  return result;
+};
 
 export const calculateTask1 = catchAsync(async (req, res, next) => {
-    const { I, t, P, S, T } = req.body
-    const result = {}
+  const {
+    line,
+    transformer,
+    switch1,
+    switch2,
+    sectionSwitch,
+    buses,
+    length,
+    Za,
+    Zp,
+  } = req.body;
 
-    result.I = S / (Math.sqrt(3) * constants[1].U * 2)
-    result.Ipa = result.I * 2
-    result.j = T < 3000 ? 1.6 : T < 5000 ? 1.4 : 1.2
-    result.s = result.I / result.j
-    result.S = (I * 1000 * Math.sqrt(t)) / constants[1].C
+  const lineData = data.powerLines[line];
+  const transformerData = data.transformers[transformer];
+  const switch1Data = data.switches[switch1];
+  const switch2Data = data.switches[switch2];
+  const sectionSwitchData = data.switches[sectionSwitch];
+  const busData = data.bus;
 
-    res.status(200).json({ status: 'success', data: result })
-})
+  const objects = [
+    { ...lineData, o: lineData.o * length },
+    transformerData,
+    switch1Data,
+    switch2Data,
+    { ...busData, o: busData.o * buses },
+  ];
 
-export const calculateTask2 = catchAsync(async (req, res, next) => {
-    const { S } = req.body
-    const result = {}
+  const result = calculate(objects);
+  result.o2 = 2 * result.o * (result.ka + result.kp) + sectionSwitchData.o;
 
-    result.Xc = (constants[2].U * constants[2].U) / S
-    result.Xt =
-        ((constants[2].Uk / 100) * (constants[2].U * constants[2].U)) /
-        constants[2].St
-    result.X = result.Xc + result.Xt
-    result.I0 = constants[2].U / Math.sqrt(3) / result.X
+  const transformerResult = calculate([transformerData]);
+  result.Ma = transformerResult.ka * 5120 * 6451;
+  result.Mp = transformerResult.kp * 5120 * 6451;
+  result.M = result.Ma * Za + result.Mp * Zp;
 
-    res.status(200).json({ status: 'success', data: result })
-})
-
-export const calculateTask3 = catchAsync(async (req, res, next) => {
-    const { R, X } = req.body
-    const result = {}
-
-    result.Xt =
-        (constants[3].Uk * constants[3].U * constants[3].U) /
-        (constants[3].St * 100)
-    result.R = R
-    result.X = result.Xt + X
-    result.Z = Math.sqrt(result.R * result.R + result.X * result.X)
-    result.I3 = (constants[3].U * 1000) / (Math.sqrt(3) * result.Z)
-    result.I2 = (result.I3 * Math.sqrt(3)) / 2
-    result.Rn = result.R * constants[3].k
-    result.Xn = result.X * constants[3].k
-    result.Zn = Math.sqrt(result.Rn * result.Rn + result.Xn * result.Xn)
-    result.I3n = (constants[3].Un * 1000) / (Math.sqrt(3) * result.Zn)
-    result.I2n = (result.I3n * Math.sqrt(3)) / 2
-
-    res.status(200).json({ status: 'success', data: result })
-})
+  res.status(200).json({ status: 'success', data: result });
+});

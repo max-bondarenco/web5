@@ -1,24 +1,18 @@
-import express from 'express'
-import cors from 'cors'
+import express from 'express';
+import cors from 'cors';
 
-import errorHandler from './utils/errorHandler.js'
-import notFound from './utils/notFound.js'
-import {
-    calculateTask1,
-    calculateTask2,
-    calculateTask3,
-} from './controllers/calculate.controller.js'
+import errorHandler from './utils/errorHandler.js';
+import notFound from './utils/notFound.js';
+import { calculateTask1 } from './controllers/calculate.controller.js';
 
-const app = express()
+const app = express();
 
-app.use(express.json())
-app.use(cors({ origin: ['http://localhost:5173'] }))
+app.use(express.json());
+app.use(cors({ origin: ['http://localhost:5173'] }));
 
-app.post('/api/task1', calculateTask1)
-app.post('/api/task2', calculateTask2)
-app.post('/api/task3', calculateTask3)
+app.post('/api/task1', calculateTask1);
 
-app.use(notFound)
-app.use(errorHandler)
+app.use(notFound);
+app.use(errorHandler);
 
-export default app
+export default app;
